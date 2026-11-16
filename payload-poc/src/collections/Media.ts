@@ -7,7 +7,7 @@ export const Media: CollectionConfig = {
   admin: { group: 'Library' },
   access: { read: anyone, create: authenticated, update: authenticated, delete: authenticated },
   upload: {
-    // Local disk storage. In Docker this directory is a named volume (see compose.prod.yml).
+    // Local disk storage. In Docker this directory is a named volume (see deploy/compose.yml).
     staticDir: process.env.MEDIA_DIR ?? path.resolve(process.cwd(), 'media'),
     mimeTypes: ['image/*', 'video/*'],
   },

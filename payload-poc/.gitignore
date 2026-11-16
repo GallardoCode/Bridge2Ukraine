@@ -9,4 +9,5 @@ next-env.d.ts
 # Uploaded files (Payload local storage). In production this is a Docker volume.
 /media/
 /test-media/
+/content-export/
 coverage/

@@ -6,9 +6,11 @@ test-media
 .env.*
 !.env.example
 tests
-docs
 deploy
+docker
+docs
+*.md
 compose.*.yml
 Dockerfile
 .dockerignore
-*.md
+*.tsbuildinfo

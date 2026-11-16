@@ -15,7 +15,8 @@ import { migrations } from './migrations'
 const dirname = path.dirname(fileURLToPath(import.meta.url))
 
 export default buildConfig({
-  serverURL: process.env.NEXT_PUBLIC_SERVER_URL ?? '',
+  // No serverURL on purpose: media URLs stay relative (/api/media/file/...), so the
+  // same image works behind Plesk on any domain without rebuilding.
   admin: {
     user: Users.slug,
     importMap: { baseDir: path.resolve(dirname) },

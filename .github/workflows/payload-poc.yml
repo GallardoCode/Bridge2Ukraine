@@ -1,0 +1,192 @@
+# CI/CD for the Payload CMS prototype in payload-poc/.
+# - Every push / PR touching it: lint, types, migration drift, integration tests,
+#   then build the production image and smoke-test it against an empty Postgres.
+# - A tag like `cms-v1.2.3`: the same, then publish the image to GHCR as
+#   1.2.3, 1.2 and sha-<commit>, and create a GitHub release.
+# The static site at the repository root is not affected by this workflow.
+name: payload-poc
+
+on:
+  push:
+    branches: ['**']
+    tags: ['cms-v*.*.*']
+    paths:
+      - 'payload-poc/**'
+      - 'photos/**'
+      - '.github/workflows/payload-poc.yml'
+  pull_request:
+    paths:
+      - 'payload-poc/**'
+      - 'photos/**'
+      - '.github/workflows/payload-poc.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: payload-poc-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+permissions:
+  contents: read
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/bridge2ukraine-cms
+
+jobs:
+  check:
+    name: Lint, types, migrations, tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: payload-poc
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: payload
+          POSTGRES_PASSWORD: payload
+          POSTGRES_DB: bridge2ukraine_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U payload -d bridge2ukraine_test"
+          --health-interval 2s --health-timeout 3s --health-retries 30
+    env:
+      DATABASE_URL: postgresql://payload:payload@localhost:5432/bridge2ukraine_test
+      TEST_DATABASE_URL: postgresql://payload:payload@localhost:5432/bridge2ukraine_test
+      PAYLOAD_SECRET: ci-only-not-a-real-secret
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: payload-poc/package.json
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: payload-poc/.nvmrc
+          cache: pnpm
+          cache-dependency-path: payload-poc/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Generated files are committed
+        run: |
+          pnpm generate:types
+          pnpm generate:importmap
+          git diff --exit-code -- src/payload-types.ts 'src/app/(payload)/admin/importMap.js'
+
+      - name: Every schema change has a migration
+        run: pnpm migrate:check
+
+      - name: Integration tests (migrations from zero, seed, rendering, drafts, access)
+        run: pnpm test
+
+      - name: Deploy scripts
+        run: shellcheck deploy/*.sh scripts/*.sh
+
+  image:
+    name: Build, smoke-test and publish image
+    needs: check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    env:
+      PUBLISH: ${{ startsWith(github.ref, 'refs/tags/cms-v') }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v4
+
+      - id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          flavor: latest=false
+          tags: |
+            type=match,pattern=cms-v(\d+\.\d+\.\d+),group=1
+            type=match,pattern=cms-v(\d+\.\d+)\.\d+,group=1
+            type=sha,prefix=sha-
+            type=ref,event=branch
+            type=ref,event=pr
+
+      - name: Build
+        uses: docker/build-push-action@v7
+        with:
+          context: payload-poc
+          load: true
+          tags: b2u-cms:ci
+          build-args: APP_VERSION=${{ steps.meta.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke test against an empty database
+        working-directory: payload-poc
+        run: |
+          set -euo pipefail
+          docker network create smoke
+          docker run -d --name db --network smoke \
+            -e POSTGRES_USER=payload -e POSTGRES_PASSWORD=smoke -e POSTGRES_DB=bridge2ukraine \
+            postgres:18-alpine
+          until docker exec db pg_isready -U payload -d bridge2ukraine >/dev/null 2>&1; do sleep 1; done
+          docker run -d --name app --network smoke -p 127.0.0.1:3000:3000 \
+            -e DATABASE_URL=postgresql://payload:smoke@db:5432/bridge2ukraine \
+            -e PAYLOAD_SECRET=smoke-test-secret \
+            b2u-cms:ci
+          for _ in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:3000/healthz; then break; fi
+            sleep 2
+          done
+          echo
+          docker logs app
+          curl -fsS http://127.0.0.1:3000/healthz | grep -q '"status":"ok"'
+          docker logs app 2>&1 | grep -q 'Migrated:'
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/admin)" = 200
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/)" = 200
+          test "$(docker exec app id -u)" = 1001
+          echo "Smoke test passed"
+
+      - name: Log in to GHCR
+        if: env.PUBLISH == 'true'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish
+        if: env.PUBLISH == 'true'
+        uses: docker/build-push-action@v7
+        with:
+          context: payload-poc
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: APP_VERSION=${{ steps.meta.outputs.version }}
+          cache-from: type=gha
+          provenance: mode=max
+          sbom: true
+
+  release:
+    name: GitHub release
+    if: startsWith(github.ref, 'refs/tags/cms-v')
+    needs: image
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="${TAG#cms-v}"
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "CMS $version" --generate-notes \
+            --notes "Image: \`${IMAGE_NAME,,}:$version\`. Deploy on the server with \`./deploy.sh $version\`."

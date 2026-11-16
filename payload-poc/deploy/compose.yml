@@ -1,0 +1,44 @@
+# Production stack for the Plesk server: the app image from GHCR plus Postgres.
+# Plesk's nginx is the only reverse proxy; the app listens on 127.0.0.1 only.
+# Usage: see docs/DEPLOYMENT.md. Values come from ./.env next to this file.
+name: bridge2ukraine
+
+services:
+  app:
+    image: ${IMAGE:-ghcr.io/apivahnenko/bridge2ukraine-cms}:${APP_VERSION:?Set APP_VERSION in .env}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://payload:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/bridge2ukraine
+      PAYLOAD_SECRET: ${PAYLOAD_SECRET:?Set PAYLOAD_SECRET in .env}
+    ports:
+      - '127.0.0.1:${APP_PORT:-3000}:3000'
+    volumes:
+      - media:/app/media
+    logging:
+      driver: json-file
+      options: { max-size: 10m, max-file: '5' }
+
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: payload
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: bridge2ukraine
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U payload -d bridge2ukraine']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    logging:
+      driver: json-file
+      options: { max-size: 10m, max-file: '5' }
+
+volumes:
+  pgdata:
+  media:

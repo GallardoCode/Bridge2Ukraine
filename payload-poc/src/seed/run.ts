@@ -6,8 +6,9 @@ import { seed } from './seed'
 // PROTOTYPE: `pnpm seed`. Wipes CMS content in DATABASE_URL and re-imports the static site.
 const payload = await getPayload({ config })
 
+// The throwaway login is for local development only; exported content never includes users.
 const { totalDocs: users } = await payload.count({ collection: 'users' })
-if (users === 0) {
+if (process.env.NODE_ENV === 'development' && users === 0) {
   const email = 'dev@example.com'
   const password = 'dev-password'
   await payload.create({ collection: 'users', data: { email, password, name: 'Local editor' } })
