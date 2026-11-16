@@ -32,6 +32,7 @@ export default buildConfig({
   collections: [Pages, Stories, Partners, Media, Users],
   globals: [SiteSettings],
   editor: lexicalEditor(),
+  // Payload refuses to start with an empty secret, so a missing PAYLOAD_SECRET fails loudly.
   secret: process.env.PAYLOAD_SECRET ?? '',
   typescript: { outputFile: path.resolve(dirname, 'payload-types.ts') },
   db: postgresAdapter({

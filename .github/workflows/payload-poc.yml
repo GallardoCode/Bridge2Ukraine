@@ -2,13 +2,15 @@
 # - Every push / PR touching it: lint, types, migration drift, integration tests,
 #   then build the production image and smoke-test it against an empty Postgres.
 # - A tag like `cms-v1.2.3`: the same, then publish the image to GHCR as
-#   1.2.3, 1.2 and sha-<commit>, and create a GitHub release.
+#   1.2.3, 1.2 and sha-<commit>, and create a GitHub release. The image that is
+#   pushed is the exact image that passed the smoke test (no rebuild).
 # The static site at the repository root is not affected by this workflow.
 name: payload-poc
 
 on:
   push:
-    branches: ['**']
+    # Pull requests are covered by the pull_request trigger; this avoids running twice.
+    branches: [main, 'prototype/**']
     tags: ['cms-v*.*.*']
     paths:
       - 'payload-poc/**'
@@ -79,7 +81,8 @@ jobs:
         run: |
           pnpm generate:types
           pnpm generate:importmap
-          git diff --exit-code -- src/payload-types.ts 'src/app/(payload)/admin/importMap.js'
+          changes="$(git status --porcelain -- src/payload-types.ts 'src/app/(payload)/')"
+          if [ -n "$changes" ]; then echo "$changes"; echo "Run pnpm generate:types / generate:importmap and commit."; exit 1; fi
 
       - name: Every schema change has a migration
         run: pnpm migrate:check
@@ -123,6 +126,7 @@ jobs:
           context: payload-poc
           load: true
           tags: b2u-cms:ci
+          labels: ${{ steps.meta.outputs.labels }}
           build-args: APP_VERSION=${{ steps.meta.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -145,9 +149,11 @@ jobs:
             sleep 2
           done
           echo
-          docker logs app
-          curl -fsS http://127.0.0.1:3000/healthz | grep -q '"status":"ok"'
-          docker logs app 2>&1 | grep -q 'Migrated:'
+          logs="$(docker logs app 2>&1)"
+          echo "$logs"
+          health="$(curl -fsS http://127.0.0.1:3000/healthz)"
+          [[ "$health" == *'"status":"ok"'* ]]
+          [[ "$logs" == *'Migrated:'* ]]
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/admin)" = 200
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/)" = 200
           test "$(docker exec app id -u)" = 1001
@@ -161,18 +167,17 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Publish
+      - name: Publish the smoke-tested image
         if: env.PUBLISH == 'true'
-        uses: docker/build-push-action@v7
-        with:
-          context: payload-poc
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          build-args: APP_VERSION=${{ steps.meta.outputs.version }}
-          cache-from: type=gha
-          provenance: mode=max
-          sbom: true
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          set -euo pipefail
+          while read -r tag; do
+            [ -n "$tag" ] || continue
+            docker tag b2u-cms:ci "$tag"
+            docker push "$tag"
+          done <<< "$TAGS"
 
   release:
     name: GitHub release

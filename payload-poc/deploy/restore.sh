@@ -19,7 +19,7 @@ docker compose exec -T postgres pg_restore -U payload -d bridge2ukraine --no-own
 
 echo "→ Media"
 docker run --rm -v bridge2ukraine_media:/media -v "$PWD/$dir":/backup:ro alpine:3 \
-  sh -c 'rm -rf /media/* && tar xzf /backup/media.tar.gz -C /media && chown -R 1001:1001 /media'
+  sh -c 'find /media -mindepth 1 -delete && tar xzf /backup/media.tar.gz -C /media && chown -R 1001:1001 /media'
 
 echo "Backup was taken from version $(cat "$dir/VERSION"). Make sure APP_VERSION in .env matches before starting."
 echo "Then run: docker compose up -d app"

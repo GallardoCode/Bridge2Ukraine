@@ -26,8 +26,8 @@ version.
 
 ## Images and releases
 
-CI (`.github/workflows/payload-poc.yml`) runs on every push and pull request
-that touches `payload-poc/`, `photos/` or the workflow:
+CI (`.github/workflows/payload-poc.yml`) runs on pull requests and on pushes to
+`main` and `prototype/**` that touch `payload-poc/`, `photos/` or the workflow:
 
 1. lint, typecheck, and check that the generated types and import map are
    committed
@@ -41,8 +41,9 @@ that touches `payload-poc/`, `photos/` or the workflow:
 
 Pushing a tag `cms-vX.Y.Z` does all of that, then:
 
-- publishes `ghcr.io/<owner>/bridge2ukraine-cms` as `X.Y.Z`, `X.Y` and
-  `sha-<commit>`, with SBOM and provenance attestations
+- tags the image that just passed the smoke test as `X.Y.Z`, `X.Y` and
+  `sha-<commit>` and pushes it to `ghcr.io/<owner>/bridge2ukraine-cms`. It
+  doesn't rebuild, so the published image is the tested one.
 - creates a GitHub release with notes generated from the commits
 
 ```bash
@@ -58,6 +59,11 @@ number".
 The image name comes from the repository owner. The upstream repository
 belongs to APIvahnenko, so CI there publishes `ghcr.io/apivahnenko/...`. A fork
 publishes under the fork's owner; set `IMAGE=` in the server's `.env` to match.
+
+Deployment itself is a manual step: someone runs `./deploy.sh <version>` on the
+server, and the server pulls the image. CI holds no server credentials. Adding
+an automatic deploy later means giving CI an SSH key to the Plesk host, which
+I left out until the release flow has been used for a while.
 
 The workflow has not run on GitHub yet. Running it needs the branch pushed to a
 repository where Actions is enabled.
@@ -214,8 +220,8 @@ rollback procedure here, because a restore is easier to reason about.
 1. Backs up the database and media to `backups/<timestamp>-before-<version>/`.
 2. Pulls the image.
 3. Writes `APP_VERSION` to `.env` and runs `docker compose up -d`.
-4. Waits up to two minutes for `/healthz`. On failure it prints the rollback
-   command.
+4. Waits up to two minutes for `/healthz` to report the requested version. On
+   failure it prints the rollback command.
 
 If the release you're leaving ran a migration the older one can't handle,
 restore the backup taken just before it, then deploy the older version:

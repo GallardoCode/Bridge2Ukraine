@@ -8,7 +8,7 @@ stamp="$(date -u +%Y%m%dT%H%M%SZ)${1:+-$1}"
 dir="backups/$stamp"
 mkdir -p "$dir"
 
-grep -E '^APP_VERSION=' .env | cut -d= -f2 > "$dir/VERSION"
+{ grep -E '^APP_VERSION=' .env | tail -1 | cut -d= -f2- || echo unknown; } > "$dir/VERSION"
 
 echo "→ Database"
 docker compose exec -T postgres pg_dump -U payload -d bridge2ukraine --format=custom > "$dir/db.dump"

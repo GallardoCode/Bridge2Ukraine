@@ -11,3 +11,5 @@ next-env.d.ts
 /test-media/
 /content-export/
 coverage/
+# Written by `next dev` (Next.js agent rules)
+AGENTS.md

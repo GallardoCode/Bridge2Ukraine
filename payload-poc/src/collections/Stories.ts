@@ -55,8 +55,10 @@ export const Stories: CollectionConfig = {
       type: 'upload',
       relationTo: 'media',
       admin: { condition: (_, s) => s?.kind === 'photo' || s?.kind === 'video' },
-      validate: (value: unknown, { siblingData }: { siblingData: { kind?: string } }) =>
-        siblingData.kind !== 'fact' && !value ? 'Photos and videos need a file.' : true,
+      validate: (value: unknown, { siblingData }: { siblingData: unknown }) => {
+        const kind = typeof siblingData === 'object' && siblingData !== null && 'kind' in siblingData ? siblingData.kind : undefined
+        return kind !== 'fact' && !value ? 'Photos and videos need a file.' : true
+      },
     },
     {
       name: 'poster',
