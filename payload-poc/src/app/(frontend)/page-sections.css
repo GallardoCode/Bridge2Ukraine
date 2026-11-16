@@ -1,0 +1,161 @@
+/*
+ * Styles that lived in inline <style> blocks on donate.html and volunteer.html,
+ * plus small additions for rich text. Rules that would clash on the home page
+ * are scoped (e.g. .stacked-buttons instead of a bare .bank-action-buttons).
+ */
+
+/* --- donate.html --- */
+.donation-hero-image img {
+  border-radius: 8px;
+  width: 100%;
+  display: block;
+}
+.donation-box {
+  background-color: rgba(0, 87, 183, 0.05);
+  border-radius: 12px;
+  padding: 2.5rem;
+}
+.donation-box > p,
+.donation-box .rich-body p {
+  margin-bottom: 1.5rem;
+  color: var(--text-muted);
+}
+.bank-details-subcard {
+  background: var(--white);
+  padding: 1.5rem;
+  border-radius: 8px;
+  border: 2px solid var(--ua-blue);
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.3);
+}
+.bank-details-subcard p {
+  margin-bottom: 0.5rem;
+}
+.bank-details-subcard p:last-child {
+  margin-bottom: 0;
+}
+.button-row {
+  margin-top: 3rem;
+}
+.donation-extra-actions {
+  margin-top: 4rem;
+  padding-top: 2rem;
+  border-top: 1px solid #eeeeee;
+}
+.button-row > p {
+  margin-bottom: 1.5rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+.stacked-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: center;
+  width: 100%;
+  margin-top: 1.5rem;
+}
+.stacked-buttons a {
+  width: 100%;
+  max-width: 350px;
+  text-align: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+.volunteer-hero .stacked-buttons a {
+  max-width: 300px;
+}
+@media (min-width: 600px) {
+  .stacked-buttons {
+    flex-direction: row;
+    justify-content: center;
+  }
+}
+
+/* --- donate_items.html (inline style attributes) --- */
+.contact-block {
+  margin-bottom: 2rem;
+}
+.rich-body h3 {
+  margin-bottom: 1rem;
+  color: var(--ua-blue);
+}
+.donation-text-content .rich-body ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  line-height: 1.8;
+  color: var(--text-muted);
+}
+.donation-text-content .rich-body li {
+  margin-bottom: 0.5rem;
+}
+
+/* --- volunteer.html --- */
+.volunteer-hero {
+  text-align: center;
+  max-width: 650px;
+  margin: 0 auto 3rem auto;
+  padding: 0 1.25rem;
+}
+.volunteer-hero h2 {
+  font-size: 2.5rem;
+  font-weight: 900;
+  color: var(--ua-blue);
+  margin-bottom: 1rem;
+}
+.volunteer-contact-info {
+  margin: 1.5rem 0;
+  color: var(--text-muted);
+}
+.volunteer-gallery {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+  margin-top: 3rem;
+  padding: 0 1.25rem;
+}
+.volunteer-card {
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: #f5f5f5;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+.volunteer-card img {
+  width: 100%;
+  height: 300px;
+  object-fit: cover;
+  display: block;
+}
+@media (min-width: 768px) {
+  .volunteer-gallery {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .volunteer-card {
+    height: 450px;
+  }
+  .volunteer-card img {
+    height: 100%;
+  }
+}
+
+/* --- index.html: the button selector was an id (#view-all-btn) --- */
+.view-all-btn {
+  cursor: pointer;
+  background: transparent;
+}
+
+/* --- prototype only: draft preview banner --- */
+.poc-preview-banner {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--ua-yellow);
+  color: var(--black);
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-align: center;
+  padding: 0.4rem 1rem;
+}
+.poc-preview-banner a {
+  color: inherit;
+}

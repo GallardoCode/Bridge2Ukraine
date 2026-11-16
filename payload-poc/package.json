@@ -1,0 +1,58 @@
+{
+  "name": "bridge2ukraine-payload-poc",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PROTOTYPE: Payload CMS managing the Bridge2Ukraine site content",
+  "type": "module",
+  "packageManager": "pnpm@10.34.9",
+  "scripts": {
+    "dev": "cross-env NODE_OPTIONS=--no-deprecation next dev",
+    "build": "cross-env NODE_OPTIONS=--no-deprecation next build",
+    "start": "cross-env NODE_OPTIONS=--no-deprecation next start",
+    "payload": "cross-env NODE_OPTIONS=--no-deprecation payload",
+    "generate:types": "cross-env NODE_OPTIONS=--no-deprecation payload generate:types",
+    "generate:importmap": "cross-env NODE_OPTIONS=--no-deprecation payload generate:importmap",
+    "db:up": "docker compose -f compose.dev.yml up -d --wait",
+    "db:down": "docker compose -f compose.dev.yml down",
+    "db:reset": "docker compose -f compose.dev.yml down -v && docker compose -f compose.dev.yml up -d --wait",
+    "seed": "cross-env NODE_ENV=development NODE_OPTIONS=--no-deprecation payload run src/seed/run.ts",
+    "migrate:create": "cross-env NODE_OPTIONS=--no-deprecation payload migrate:create",
+    "migrate:check": "node scripts/check-migrations.mjs",
+    "lint": "cross-env NODE_OPTIONS=--no-deprecation eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "cross-env NODE_OPTIONS=--no-deprecation vitest run"
+  },
+  "dependencies": {
+    "@payloadcms/db-postgres": "3.93.0",
+    "@payloadcms/live-preview-react": "3.93.0",
+    "@payloadcms/next": "3.93.0",
+    "@payloadcms/richtext-lexical": "3.93.0",
+    "@payloadcms/ui": "3.93.0",
+    "cross-env": "^7.0.3",
+    "graphql": "^16.8.1",
+    "next": "16.4.6",
+    "payload": "3.93.0",
+    "react": "19.2.9",
+    "react-dom": "19.2.9"
+  },
+  "devDependencies": {
+    "@next/env": "16.4.6",
+    "@types/node": "22.19.9",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "eslint": "^9.16.0",
+    "eslint-config-next": "16.4.6",
+    "typescript": "5.9.3",
+    "vite-tsconfig-paths": "6.0.5",
+    "vitest": "4.0.18"
+  },
+  "engines": {
+    "node": ">=24.22.1"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "unrs-resolver"
+    ]
+  }
+}

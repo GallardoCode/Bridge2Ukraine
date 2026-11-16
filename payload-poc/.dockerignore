@@ -1,0 +1,14 @@
+node_modules
+.next
+media
+test-media
+.env
+.env.*
+!.env.example
+tests
+docs
+deploy
+compose.*.yml
+Dockerfile
+.dockerignore
+*.md
